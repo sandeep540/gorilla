@@ -79,9 +79,11 @@ impl App {
             && self.state.settings.trajectory_preview
             && self.state.match_state.round.projectile.is_none()
         {
-            let player = self.state.match_state.round.active_player.index();
+            let active_player = self.state.match_state.round.active_player;
+            let player = active_player.index();
             let start = hand_position(&self.state.match_state.round.gorillas[player]);
             if let Some(velocity) = parse_throw_velocity(
+                active_player,
                 &self.state.match_state.round.throw_input.angle_text,
                 &self.state.match_state.round.throw_input.velocity_text,
             ) {
@@ -250,6 +252,7 @@ impl App {
         let round = &mut self.state.match_state.round;
         let active_index = round.active_player.index();
         if let Some(velocity) = parse_throw_velocity(
+            round.active_player,
             &round.throw_input.angle_text,
             &round.throw_input.velocity_text,
         ) {
@@ -368,16 +371,20 @@ fn cycle_volume(current: f32) -> f32 {
     }
 }
 
-fn parse_throw_velocity(angle_text: &str, velocity_text: &str) -> Option<Vec2> {
+fn parse_throw_velocity(player: PlayerId, angle_text: &str, velocity_text: &str) -> Option<Vec2> {
     let angle = angle_text.parse::<f32>().ok()?;
     let velocity = velocity_text.parse::<f32>().ok()?;
-    if !(0.0..=180.0).contains(&angle) {
+    if !(0.0..=90.0).contains(&angle) {
         return None;
     }
     if !(10.0..=140.0).contains(&velocity) {
         return None;
     }
-    let radians = angle.to_radians();
+    let mirrored_angle = match player {
+        PlayerId::One => angle,
+        PlayerId::Two => 180.0 - angle,
+    };
+    let radians = mirrored_angle.to_radians();
     Some(vec2(radians.cos() * velocity, -radians.sin() * velocity))
 }
 
@@ -437,5 +444,16 @@ mod tests {
         let settings = Settings { target_score: 7, ..Settings::default() };
         let match_state = new_match(&settings);
         assert_eq!(match_state.target_score, 7);
+    }
+
+    #[test]
+    fn player_two_angle_is_mirrored() {
+        let velocity = parse_throw_velocity(PlayerId::Two, "45", "50").unwrap();
+        assert!(velocity.x < 0.0);
+        assert!(velocity.y < 0.0);
+
+        let player_one = parse_throw_velocity(PlayerId::One, "45", "50").unwrap();
+        assert!(player_one.x > 0.0);
+        assert!((velocity.y - player_one.y).abs() < f32::EPSILON);
     }
 }

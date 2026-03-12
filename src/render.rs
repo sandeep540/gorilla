@@ -225,7 +225,7 @@ pub fn draw_throw_input_overlay(viewport: Rect, round: &RoundState, scene: Scene
     draw_input_box(
         viewport,
         angle_rect,
-        &format!("Angle (0-180): {}", round.throw_input.angle_text),
+        &format!("Angle (0-90): {}", round.throw_input.angle_text),
         round.throw_input.focus == ThrowField::Angle,
         font,
     );
